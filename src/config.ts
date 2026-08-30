@@ -40,6 +40,11 @@ export interface Config {
 	 * it stops as if nothing happened. Default true.
 	 */
 	resumeAfterMidRunCompaction: boolean;
+	/**
+	 * Start new sessions with om already enabled when the session's ledger has no explicit
+	 * `/om on|off` gate entry. An explicit gate entry always wins. Default false.
+	 */
+	enabledByDefault: boolean;
 	/** Power-user setting: disable all triggers (distinct from the on/off gate). */
 	passive: boolean;
 	/** Emit the NDJSON debug log. */
@@ -51,14 +56,15 @@ export const DEFAULTS: Config = {
 	chunkOverlapTokens: 0,
 	poolTargetTokens: 10_000,
 	consolidateAtPoolTokens: 15_000,
-	compactAtContextTokens: 150_000,
+	compactAtContextTokens: 230_000,
 	tailTokens: 20_000,
 	journeyTargetTokens: 1_000,
 	observerConcurrency: 4,
 	resumeAfterMidRunCompaction: true,
+	enabledByDefault: false,
 	models: {
-		observer: { provider: "openrouter", id: "z-ai/glm-5.3", thinking: "low" },
-		consolidator: { provider: "openrouter", id: "z-ai/glm-5.3", thinking: "medium" },
+		observer: { provider: "vllm", id: "qwen3.8-27b", thinking: "low" },
+		consolidator: { provider: "vllm", id: "qwen3.8-27b", thinking: "medium" },
 	},
 	passive: false,
 	debugLog: false,
@@ -116,6 +122,7 @@ function normalizeSettingsConfig(value: Record<string, unknown>, base: Config): 
 	if (typeof value.resumeAfterMidRunCompaction === "boolean")
 		normalized.resumeAfterMidRunCompaction = value.resumeAfterMidRunCompaction;
 	if (typeof value.passive === "boolean") normalized.passive = value.passive;
+	if (typeof value.enabledByDefault === "boolean") normalized.enabledByDefault = value.enabledByDefault;
 	if (typeof value.debugLog === "boolean") normalized.debugLog = value.debugLog;
 	if (isRecord(value.models)) {
 		normalized.models = {

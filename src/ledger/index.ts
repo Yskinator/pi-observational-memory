@@ -1,5 +1,6 @@
 export * from "./types.js";
 export * from "./fold.js";
+export * from "./gate.js";
 export * from "./progress.js";
 export * from "./projection.js";
 export * from "./pool.js";

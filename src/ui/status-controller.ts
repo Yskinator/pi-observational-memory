@@ -159,18 +159,13 @@ export class StatusController {
 		this.spinnerTimer = undefined;
 	}
 
-	/** A compact colored fill bar, e.g. `▕████░░░░▏`. Filled cells use `over` (an alert color) past max. */
+	/** A compact colored fill bar, e.g. `####....`. Plain ASCII so the fill stays legible in any terminal font. */
 	private gaugeBar(value: number, max: number, cells = 8): string {
 		const theme = this.ui!.theme;
 		const frac = max <= 0 ? 0 : Math.max(0, value / max);
 		const filled = Math.min(cells, Math.round(Math.min(1, frac) * cells));
 		const fillColor = frac >= 1 ? "warning" : "dim";
-		return (
-			theme.fg(fillColor, "▕") +
-			theme.fg(fillColor, "█".repeat(filled)) +
-			theme.fg(fillColor, "░".repeat(cells - filled)) +
-			theme.fg(fillColor, "▏")
-		);
+		return theme.fg(fillColor, "#".repeat(filled) + ".".repeat(cells - filled));
 	}
 
 	private renderFooter(): string {

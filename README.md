@@ -102,6 +102,7 @@ Namespace `observational-memory` in `~/.pi/agent/settings.json` (global) or
 ```jsonc
 {
   "observational-memory": {
+    "enabledByDefault": false,         // start new sessions already on (when no explicit /om gate entry exists)
     "chunkTokens": 5000,
     "chunkOverlapTokens": 0,
     "poolTargetTokens": 10000,           // buffer drains back toward this after consolidation

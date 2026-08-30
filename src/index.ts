@@ -17,19 +17,9 @@ import { registerCompactionHook } from "./hooks/compaction-hook.js";
 import { registerCompactionTrigger } from "./hooks/compaction-trigger.js";
 import { registerConsolidatorTrigger } from "./hooks/consolidator-trigger.js";
 import { registerObserverTrigger } from "./hooks/observer-trigger.js";
-import { OM_ENABLED, type Entry } from "./ledger/index.js";
+import { OM_ENABLED, resolveEnabledGate, type Entry } from "./ledger/index.js";
 import { ensureSessionMemory } from "./memory/session.js";
 import { Runtime } from "./runtime.js";
-
-function readGateFromLedger(branch: Entry[]): boolean {
-	for (let i = branch.length - 1; i >= 0; i--) {
-		const entry = branch[i];
-		if (entry.type === "custom" && entry.customType === OM_ENABLED) {
-			return (entry.data as { enabled?: boolean } | undefined)?.enabled ?? false;
-		}
-	}
-	return false;
-}
 
 export default function observationalMemory(pi: ExtensionAPI): void {
 	const runtime = new Runtime();
@@ -46,7 +36,8 @@ export default function observationalMemory(pi: ExtensionAPI): void {
 		runtime.ensureConfig(ctx.cwd);
 		runtime.dispatchedCoversUpToId = undefined;
 		const branch = ctx.sessionManager.getBranch() as Entry[];
-		runtime.enabled = readGateFromLedger(branch);
+		// An explicit /om gate entry in the ledger wins; otherwise fall back to config.
+		runtime.enabled = resolveEnabledGate(branch, runtime.config.enabledByDefault);
 		if (runtime.enabled) runtime.memoryRoot = ensureSessionMemory(ctx);
 		attachIfEnabled(ctx);
 		runtime.refreshFooterGauges(branch, ctx.getContextUsage?.()?.tokens ?? null);

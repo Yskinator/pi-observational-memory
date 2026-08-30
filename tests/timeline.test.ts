@@ -38,9 +38,9 @@ describe("renderTimeline", () => {
 
 		const out = renderTimeline(branch, cfg);
 		const strip = out.split("\n")[1];
-		expect(strip).toBe("▓▒░░▶"); // consolidated, pool, 2 raw, tip
-		expect(out).toContain("▓ .memory (1)");
-		expect(out).toContain("▒ pool (1)");
+		expect(strip).toBe("#o..>"); // consolidated, pool, 2 raw, tip
+		expect(out).toContain("# .memory (1)");
+		expect(out).toContain("o pool (1)");
 	});
 
 	it("marks a partially-promoted chunk", () => {
@@ -53,7 +53,7 @@ describe("renderTimeline", () => {
 			observationsDroppedEntry("d1", { observationTimestamps: ["t1"], coversUpToId: "m1" }) as unknown as Entry,
 		] as Entry[];
 		const strip = renderTimeline(branch, cfg).split("\n")[1];
-		expect(strip).toBe("▚▶");
+		expect(strip).toBe("+>");
 	});
 
 	it("overlays a compaction cut at the chunk boundary", () => {
@@ -66,7 +66,7 @@ describe("renderTimeline", () => {
 		] as Entry[];
 		const strip = renderTimeline(branch, cfg).split("\n")[1];
 		// cut sits before the chunk covering m2 (one chunk boundary precedes m2's index)
-		expect(strip).toBe("▒┊▒▶");
+		expect(strip).toBe("o|o>");
 		expect(renderTimeline(branch, cfg)).toContain("1 compaction");
 	});
 
@@ -83,10 +83,10 @@ describe("renderTimeline", () => {
 		}
 		const out = renderTimeline(branch, cfg, 2);
 		const lines = out.split("\n");
-		// 5 pool cells at width 2 → rows "▒▒", "▒▒", "▒▶"
-		expect(lines[1]).toBe("▒▒");
-		expect(lines[2]).toBe("▒▒");
-		expect(lines[3]).toBe("▒▶");
+		// 5 pool cells at width 2 → rows "oo", "oo", "o>"
+		expect(lines[1]).toBe("oo");
+		expect(lines[2]).toBe("oo");
+		expect(lines[3]).toBe("o>");
 	});
 
 

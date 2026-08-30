@@ -8,14 +8,14 @@ import {
 	type Entry,
 } from "../ledger/index.js";
 
-/** Glyphs for the timeline strip. */
+/** ASCII glyphs for the timeline strip (legible in any terminal font); dense → sparse. */
 const GLYPH = {
-	consolidated: "▓", // observations promoted to .memory (long-term)
-	partial: "▚", // chunk straddling the pool-target boundary (some obs promoted)
-	pool: "▒", // observed, still in the short-term buffer
-	raw: "░", // raw history not yet distilled into observations
-	cut: "┊", // compaction cutoff (verbatim tail began here)
-	tip: "▶", // live branch tip
+	consolidated: "#", // observations promoted to .memory (long-term)
+	partial: "+", // chunk straddling the pool-target boundary (some obs promoted)
+	pool: "o", // observed, still in the short-term buffer
+	raw: ".", // raw history not yet distilled into observations
+	cut: "|", // compaction cutoff (verbatim tail began here)
+	tip: ">", // live branch tip
 } as const;
 
 /** A committed observation chunk, in branch order. */
