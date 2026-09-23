@@ -63,6 +63,16 @@ consolidator draining the oldest observations into durable per-session memory fi
   append-mostly: each consolidation adds a short dated segment and compresses the oldest
   segments only once the file exceeds `journeyTargetTokens`, so recent history stays detailed
   and the section stays bounded. Like the topic files it does **not** roll back under `/tree`.
+- **Unconsolidated observations on disk** (`.memory/<session>/observations.md`): a
+  **machine-managed** file holding the current unconsolidated (active) observation set. The
+  orchestrator atomically re-renders it whenever a new observation is committed, whenever a
+  consolidation drops observations into topic files, and on session start, so it self-heals to
+  the exact current set on the next observation commit, consolidation, `/om on`, or session
+  start. (A mid-session `/tree` rollback updates the ledger immediately; this durability copy
+  stays stale only until the next refresh — the ledger and the injected compaction block are
+  always correct.) Do not edit it by hand; it is not a topic file (never appears in `INDEX.md`)
+  and is invisible to the consolidator. Because the ledger itself lives in the session file,
+  this file is what makes unconsolidated observations **survive container/session loss**.
 
 Each worker is an **ordinary recorded pi session** in the global store
 (`~/.pi/agent/sessions`, under the project path) — open it in the session browser to see the
@@ -135,6 +145,6 @@ npm run typecheck # tsc --noEmit
 Layout: `src/` is the master-side orchestrator (entry `src/index.ts`); `agent/` is the shared
 worker extension loaded into subprocesses via `-e` (`OM_WORKER=observer|consolidator`).
 Long-term memory lives under `<project>/.memory/<sessionId>/` (`INDEX.md` + `<topic>.md` +
-`JOURNEY.md`), keyed by the immutable session-header id so sessions in the same project stay
+`JOURNEY.md` + `observations.md`), keyed by the immutable session-header id so sessions in the same project stay
 isolated; a fork seeds its dir from the parent's on first touch. Transient worker IPC lives
 under `<project>/.memory/<sessionId>/.runs/`.

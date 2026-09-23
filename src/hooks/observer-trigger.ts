@@ -14,6 +14,7 @@ import {
 	type SourceSlice,
 } from "../ledger/index.js";
 import type { Runtime } from "../runtime.js";
+import { refreshObservationsFile } from "../memory/observations-render.js";
 import { buildWorkerArgv, buildWorkerEnv, spawnWorker } from "../spawn/launch.js";
 import { readObserverResult, readWorkerCost, runCostPath, runResultPath } from "../spawn/runs.js";
 
@@ -167,6 +168,9 @@ async function dispatchObserver(
 
 		if (observations.length > 0) {
 			pi.appendEntry(OM_OBSERVATIONS_RECORDED, { observations, coversUpToId });
+			// Persist the unconsolidated set to disk: re-fold the post-commit branch so
+			// observations.md reflects the just-committed observations.
+			refreshObservationsFile(runtime.memoryRoot, ctx.sessionManager.getBranch());
 		}
 		runtime.status.workerDone(runId, observations.length);
 		runtime.refreshFooterGauges(ctx.sessionManager.getBranch(), ctx.getContextUsage?.()?.tokens ?? null);

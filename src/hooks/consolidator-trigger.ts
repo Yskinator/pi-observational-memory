@@ -29,6 +29,7 @@ import {
 } from "../ledger/index.js";
 import { nowTimestamp } from "../ledger/serialize.js";
 import { renderIndexFile } from "../memory/index-render.js";
+import { refreshObservationsFile } from "../memory/observations-render.js";
 import { atomicWrite, indexPath, listTopics, readJourney } from "../memory/paths.js";
 import type { Runtime } from "../runtime.js";
 import { buildWorkerArgv, buildWorkerEnv, spawnWorker } from "../spawn/launch.js";
@@ -140,6 +141,9 @@ async function dispatchConsolidator(
 
 		// Re-render INDEX.md so live ls/grep truth leads the pushed map (design risk 3).
 		atomicWrite(indexPath(runtime.memoryRoot), renderIndexFile(listTopics(runtime.memoryRoot)));
+		// Drop the tombstoned observations from the on-disk unconsolidated set: re-fold the
+		// CURRENT (post-tombstone) branch so observations.md holds exactly what is still active.
+		refreshObservationsFile(runtime.memoryRoot, ctx.sessionManager.getBranch());
 
 		runtime.status.workerDone(runId, toDrop.length);
 		runtime.refreshFooterGauges(ctx.sessionManager.getBranch(), ctx.getContextUsage?.()?.tokens ?? null);

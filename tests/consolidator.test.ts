@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -47,6 +47,28 @@ describe("registerConsolidatorTools (scoped to .memory/)", () => {
 		const w = await tools.get("write").execute("1", { path: "INDEX.md", content: "x" });
 		expect(w.content[0].text).toContain("generated automatically");
 		expect(existsSync(join(memoryRoot, "INDEX.md"))).toBe(false);
+	});
+
+	it("refuses to read, write, or edit observations.md (orchestrator-managed)", async () => {
+		mkdirSync(memoryRoot, { recursive: true });
+		writeFileSync(join(memoryRoot, "observations.md"), "2026-05-02T10:00:01  some event");
+		const r = await tools.get("read").execute("1", { path: "observations.md" });
+		expect(r.content[0].text).toContain("orchestrator-managed");
+		const w = await tools.get("write").execute("2", { path: "observations.md", content: "x" });
+		expect(w.content[0].text).toContain("orchestrator-managed");
+		expect(readFileSync(join(memoryRoot, "observations.md"), "utf-8")).toContain("some event");
+		const e = await tools.get("edit").execute("3", { path: "observations.md", oldText: "event", newText: "X" });
+		expect(e.content[0].text).toContain("orchestrator-managed");
+	});
+
+	it("never surfaces observations.md in ls or grep", async () => {
+		mkdirSync(memoryRoot, { recursive: true });
+		writeFileSync(join(memoryRoot, "observations.md"), "secret-obs-line");
+		writeFileSync(join(memoryRoot, "auth.md"), "uses JWT tokens");
+		const ls = await tools.get("ls").execute("1", {});
+		expect(ls.content[0].text).toBe("auth.md");
+		const grep = await tools.get("grep").execute("2", { pattern: "secret|obs" });
+		expect(grep.content[0].text).toBe("(no matches)");
 	});
 
 	it("rejects paths that escape .memory/", async () => {

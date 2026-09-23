@@ -69,6 +69,23 @@ describe("listTopics", () => {
 	it("returns [] when the session memory root does not exist", () => {
 		expect(listTopics(root)).toEqual([]);
 	});
+
+	it("excludes observations.md (orchestrator-managed, never a topic)", () => {
+		writeTopic("observations.md", "# Unconsolidated Observations\n");
+		writeTopic("INDEX.md", "# Memory index");
+		writeTopic("auth.md", "---\nid: auth\ntitle: Auth\nsummary: a\n---\nbody");
+		expect(listTopics(root).map((t) => t.filename)).toEqual(["auth.md"]);
+	});
+
+	it("excludes the special names case-insensitively (hand-created variants)", () => {
+		// The consolidator's write/ls/grep guards reject these names in ANY case, so a
+		// hand-created "Observations.md" must not leak into INDEX.md on a case-sensitive FS.
+		writeTopic("Observations.md", "# Unconsolidated Observations\n");
+		writeTopic("Index.md", "# Memory index");
+		writeTopic("journey.md", "## 2026-05-01\nStarted.");
+		writeTopic("auth.md", "---\nid: auth\ntitle: Auth\nsummary: a\n---\nbody");
+		expect(listTopics(root).map((t) => t.filename)).toEqual(["auth.md"]);
+	});
 });
 
 describe("readJourney", () => {

@@ -340,7 +340,9 @@ pi --no-extensions --no-skills --no-prompt-templates --no-context-files \
 Goal: bound the buffer and gain durable, navigable, cross-session topic files.
 
 ### B1. `.memory/` substrate (`src/memory/paths.ts`)
-- `<project>/.memory/` with `INDEX.md`, `<topic>.md`, `.runs/<runId>.json`.
+- `<project>/.memory/` with `INDEX.md`, `<topic>.md`, `JOURNEY.md`, `observations.md` (live
+  unconsolidated set, orchestrator-managed; see the `observations.md` README section), and
+  `.runs/<runId>.json`.
 - **Atomic writes**: temp file + `rename` over target so the master never reads a half-written
   file. (Consolidator edits files directly in the subprocess; same atomic helper there.)
 - Filesystem **is** the recall interface — master uses normal `ls`/`read`/`grep`; no `recall`

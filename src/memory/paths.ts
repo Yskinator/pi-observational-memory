@@ -5,6 +5,7 @@
  *
  * Layout under <project>/.memory/:
  *   INDEX.md            — orchestrator-owned; (re)rendered from topic front-matter
+ *   observations.md     — orchestrator-owned; the live unconsolidated-observation set
  *   <topic>.md          — consolidator-authored; YAML front-matter + current-state prose
  *   .runs/<id>.json     — transient worker IPC (not GC'd in v1)
  *
@@ -20,6 +21,15 @@ export const INDEX_FILENAME = "INDEX.md";
  * topic file: it is excluded from `listTopics`/the memory map and read verbatim at compaction.
  */
 export const JOURNEY_FILENAME = "JOURNEY.md";
+/**
+ * The machine-managed on-disk copy of the UNCONSOLIDATED (active) observation set.
+ * Orchestrator-owned: re-rendered after every observation commit, after every
+ * consolidation, and on session start. Like INDEX.md/JOURNEY.md it is a special file,
+ * NOT a topic: it is excluded from `listTopics`/the memory map and never listed in
+ * INDEX.md. It exists so unconsolidated observations survive container/session loss —
+ * the ledger itself lives in the session file.
+ */
+export const OBSERVATIONS_FILENAME = "observations.md";
 
 /** The project-level `.memory/` base. Per-session roots live one level below it. */
 export function memoryBaseDir(cwd: string): string {
@@ -42,6 +52,10 @@ export function indexPath(root: string): string {
 
 export function journeyPath(root: string): string {
 	return join(root, JOURNEY_FILENAME);
+}
+
+export function observationsPath(root: string): string {
+	return join(root, OBSERVATIONS_FILENAME);
 }
 
 /** Read `.memory/JOURNEY.md` body, trimmed. Returns undefined when missing or effectively empty. */
@@ -122,8 +136,9 @@ export function parseFrontMatter(content: string): { front: TopicFrontMatter; bo
 }
 
 /**
- * List parsed topic files (every `*.md` except INDEX.md/JOURNEY.md) under a session memory
- * root, sorted by filename. Each topic's `path` is rendered relative to the project cwd (e.g.
+ * List parsed topic files (every `*.md` except INDEX.md/JOURNEY.md/observations.md, compared
+ * case-insensitively to match the consolidator's case-insensitive write/ls/grep guards) under a
+ * session memory root, sorted by filename. Each topic's `path` is rendered relative to the project cwd (e.g.
  * `.memory/<sessionId>/auth.md`) so the master can `read`/`grep` it directly from the map.
  */
 export function listTopics(root: string): Topic[] {
@@ -131,7 +146,17 @@ export function listTopics(root: string): Topic[] {
 	const cwd = resolve(root, "..", "..");
 	const topics: Topic[] = [];
 	for (const filename of readdirSync(root)) {
-		if (!filename.endsWith(".md") || filename === INDEX_FILENAME || filename === JOURNEY_FILENAME) continue;
+		if (!filename.endsWith(".md")) continue;
+		// Case-insensitive: the consolidator's guards reject these special names in ANY case, so
+		// a hand-created variant (e.g. "Observations.md") must not leak into INDEX.md on a
+		// case-sensitive filesystem.
+		const lower = filename.toLowerCase();
+		if (
+			lower === INDEX_FILENAME.toLowerCase() ||
+			lower === JOURNEY_FILENAME.toLowerCase() ||
+			lower === OBSERVATIONS_FILENAME.toLowerCase()
+		)
+			continue;
 		let content: string;
 		try {
 			content = readFileSync(join(root, filename), "utf-8");

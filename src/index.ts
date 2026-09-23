@@ -19,6 +19,7 @@ import { registerConsolidatorTrigger } from "./hooks/consolidator-trigger.js";
 import { registerObserverTrigger } from "./hooks/observer-trigger.js";
 import { OM_ENABLED, resolveEnabledGate, type Entry } from "./ledger/index.js";
 import { ensureSessionMemory } from "./memory/session.js";
+import { refreshObservationsFile } from "./memory/observations-render.js";
 import { Runtime } from "./runtime.js";
 
 export default function observationalMemory(pi: ExtensionAPI): void {
@@ -38,7 +39,14 @@ export default function observationalMemory(pi: ExtensionAPI): void {
 		const branch = ctx.sessionManager.getBranch() as Entry[];
 		// An explicit /om gate entry in the ledger wins; otherwise fall back to config.
 		runtime.enabled = resolveEnabledGate(branch, runtime.config.enabledByDefault);
-		if (runtime.enabled) runtime.memoryRoot = ensureSessionMemory(ctx);
+		if (runtime.enabled) {
+			runtime.memoryRoot = ensureSessionMemory(ctx);
+			// Self-healing re-render: on session start observations.md must hold exactly the
+			// unconsolidated set (this fixes a fork's seeded copy; a mid-session /tree rollback
+			// lags only until the next refresh — the ledger is always exact). Same branch
+			// source of truth as the triggers.
+			refreshObservationsFile(runtime.memoryRoot, branch);
+		}
 		attachIfEnabled(ctx);
 		runtime.refreshFooterGauges(branch, ctx.getContextUsage?.()?.tokens ?? null);
 		runtime.refreshCost(ctx.sessionManager.getEntries() as Entry[]);
@@ -62,6 +70,9 @@ export default function observationalMemory(pi: ExtensionAPI): void {
 			pi.appendEntry(OM_ENABLED, { enabled: next });
 			if (next) {
 				runtime.memoryRoot = ensureSessionMemory(ctx);
+				// Same self-healing re-render as session_start: /om on may be the first touch of
+				// the dir (or the dir was just seeded from a parent with a stale observations.md).
+				refreshObservationsFile(runtime.memoryRoot, ctx.sessionManager.getBranch() as Entry[]);
 				attachIfEnabled(ctx);
 				runtime.refreshFooterGauges(ctx.sessionManager.getBranch() as Entry[], ctx.getContextUsage?.()?.tokens ?? null);
 				runtime.refreshCost(ctx.sessionManager.getEntries() as Entry[]);

@@ -13,7 +13,7 @@ import { join, relative, resolve } from "node:path";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
 import type { Static } from "typebox";
-import { atomicWrite } from "../../src/memory/paths.js";
+import { atomicWrite, resolveWithinMemory } from "../../src/memory/paths.js";
 
 type ToolText = { content: { type: "text"; text: string }[]; details: unknown };
 
@@ -26,13 +26,7 @@ function fail(text: string): ToolText {
 }
 
 /** Resolve a requested path against the sandbox root, or return undefined if it escapes. */
-function scoped(root: string, requested: string): string | undefined {
-	const abs = resolve(root, requested);
-	const rel = relative(root, abs);
-	if (rel === "") return abs;
-	if (rel.startsWith("..")) return undefined;
-	return abs;
-}
+const scoped = resolveWithinMemory;
 
 const ReadSchema = Type.Object({
 	path: Type.String({ description: "Path inside .memory/, e.g. 'auth.md' or '.memory/auth.md'." }),
@@ -54,6 +48,13 @@ const GrepSchema = Type.Object({
 	path: Type.Optional(Type.String({ description: "Restrict to this file/subdir inside .memory/." })),
 });
 
+/**
+ * The orchestrator-managed unconsolidated-observation file. Not a topic file: the
+ * consolidator must never read or modify it (the orchestrator re-renders it), and it is
+ * hidden from ls/grep so it is never mistaken for topic content.
+ */
+const OBSERVATIONS_MD_RE = /(^|\/)observations\.md$/i;
+
 type ReadInput = Static<typeof ReadSchema>;
 type WriteInput = Static<typeof WriteSchema>;
 type EditInput = Static<typeof EditSchema>;
@@ -63,7 +64,7 @@ type GrepInput = Static<typeof GrepSchema>;
 function listFilesRecursive(dir: string): string[] {
 	const out: string[] = [];
 	for (const name of readdirSync(dir)) {
-		if (name.startsWith(".")) continue; // skip .runs and temp files
+		if (name.startsWith(".") || OBSERVATIONS_MD_RE.test(name)) continue; // skip .runs, temp, and the orchestrator-managed file
 		const full = join(dir, name);
 		if (statSync(full).isDirectory()) out.push(...listFilesRecursive(full));
 		else out.push(full);
@@ -83,6 +84,7 @@ export function registerConsolidatorTools(pi: ExtensionAPI, memoryRoot: string):
 		async execute(_id: string, params: ReadInput): Promise<ToolText> {
 			const abs = scoped(root, params.path);
 			if (!abs) return fail("path escapes .memory/");
+			if (OBSERVATIONS_MD_RE.test(params.path)) return fail("observations.md is orchestrator-managed; do not read it");
 			if (!existsSync(abs)) return fail(`no such file: ${params.path}`);
 			return ok(readFileSync(abs, "utf-8"));
 		},
@@ -97,6 +99,7 @@ export function registerConsolidatorTools(pi: ExtensionAPI, memoryRoot: string):
 			const abs = scoped(root, params.path);
 			if (!abs) return fail("path escapes .memory/");
 			if (/(^|\/)INDEX\.md$/i.test(params.path)) return fail("INDEX.md is generated automatically; do not write it");
+			if (OBSERVATIONS_MD_RE.test(params.path)) return fail("observations.md is orchestrator-managed; do not write it");
 			atomicWrite(abs, params.content);
 			return ok(`Wrote ${params.path} (${params.content.length} bytes).`);
 		},
@@ -111,6 +114,7 @@ export function registerConsolidatorTools(pi: ExtensionAPI, memoryRoot: string):
 			const abs = scoped(root, params.path);
 			if (!abs) return fail("path escapes .memory/");
 			if (/(^|\/)INDEX\.md$/i.test(params.path)) return fail("INDEX.md is generated automatically; do not edit it");
+			if (OBSERVATIONS_MD_RE.test(params.path)) return fail("observations.md is orchestrator-managed; do not edit it");
 			if (!existsSync(abs)) return fail(`no such file: ${params.path}`);
 			const current = readFileSync(abs, "utf-8");
 			const occurrences = current.split(params.oldText).length - 1;
@@ -130,7 +134,7 @@ export function registerConsolidatorTools(pi: ExtensionAPI, memoryRoot: string):
 			const abs = scoped(root, params.path ?? ".");
 			if (!abs) return fail("path escapes .memory/");
 			if (!existsSync(abs)) return ok("(.memory/ is empty)");
-			const entries = readdirSync(abs).filter((n) => !n.startsWith("."));
+			const entries = readdirSync(abs).filter((n) => !n.startsWith(".") && !OBSERVATIONS_MD_RE.test(n));
 			return ok(entries.length > 0 ? entries.sort().join("\n") : "(empty)");
 		},
 	});
@@ -153,8 +157,9 @@ export function registerConsolidatorTools(pi: ExtensionAPI, memoryRoot: string):
 			const files = statSync(base).isDirectory() ? listFilesRecursive(base) : [base];
 			const hits: string[] = [];
 			for (const file of files) {
-				const lines = readFileSync(file, "utf-8").split("\n");
 				const relPath = relative(root, file);
+				if (OBSERVATIONS_MD_RE.test(relPath)) continue; // orchestrator-managed; invisible
+				const lines = readFileSync(file, "utf-8").split("\n");
 				lines.forEach((line, i) => {
 					if (re.test(line)) hits.push(`${relPath}:${i + 1}: ${line.trim()}`);
 				});
