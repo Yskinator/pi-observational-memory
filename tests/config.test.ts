@@ -44,8 +44,8 @@ describe("config", () => {
 		expect(config.enabledByDefault).toBe(false);
 		expect(DEFAULTS.enabledByDefault).toBe(false);
 		expect(config.observerConcurrency).toBe(DEFAULTS.observerConcurrency);
-		expect(config.models.observer).toEqual({ provider: "vllm", id: "qwen3.8-27b", thinking: "low" });
-		expect(config.models.consolidator).toEqual({ provider: "vllm", id: "qwen3.8-27b", thinking: "medium" });
+		expect(config.models.observer).toEqual({ provider: "vllm", id: "qwen3.8-flash-next", thinking: "low" });
+		expect(config.models.consolidator).toEqual({ provider: "vllm", id: "qwen3.8-flash-next", thinking: "medium" });
 	});
 
 	it("accepts enabledByDefault from global settings", () => {
@@ -83,8 +83,8 @@ describe("config", () => {
 		expect(config.enabledByDefault).toBe(true);
 		expect(config.observerConcurrency).toBe(3);
 		// Partial model object: field-by-field fallback to DEFAULTS.
-		expect(config.models.observer).toEqual({ provider: "vllm", id: "qwen3.8-27b", thinking: "high" });
-		expect(config.models.consolidator).toEqual({ provider: "vllm", id: "qwen3.8-27b", thinking: "medium" });
+		expect(config.models.observer).toEqual({ provider: "vllm", id: "qwen3.8-flash-next", thinking: "high" });
+		expect(config.models.consolidator).toEqual({ provider: "vllm", id: "qwen3.8-flash-next", thinking: "medium" });
 		// Untouched numeric key keeps its default.
 		expect(config.chunkTokens).toBe(DEFAULTS.chunkTokens);
 	});

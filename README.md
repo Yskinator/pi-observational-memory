@@ -120,10 +120,10 @@ Namespace `observational-memory` in `~/.pi/agent/settings.json` (global) or
     "compactAtContextTokens": 100000,    // tune per model
     "tailTokens": 20000,                 // verbatim tail; snaps to a chunk boundary
     "journeyTargetTokens": 1000,         // pushed JOURNEY.md size; compress oldest segments past this
-    "observerConcurrency": 4,
+    "observerConcurrency": 2,
     "models": {
-      "observer":     { "provider": "anthropic", "id": "claude-sonnet-4-6", "thinking": "low" },
-      "consolidator": { "provider": "anthropic", "id": "claude-sonnet-4-6", "thinking": "medium" }
+      "observer":     { "provider": "vllm", "id": "qwen3.8-flash-next", "thinking": "low" },
+      "consolidator": { "provider": "vllm", "id": "qwen3.8-flash-next", "thinking": "medium" }
     },
     "passive": false,
     "debugLog": false
